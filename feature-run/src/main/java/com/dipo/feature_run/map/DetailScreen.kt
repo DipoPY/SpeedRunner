@@ -21,8 +21,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import com.dipo.background.service.TrackingService
 import com.dipo.background.service.TrackingSessionState
+import com.dipo.background.worker.TrackingWorker
 import com.dipo.feature_run.util.toDisplayDuration
 import com.dipo.feature_run.util.toKilometersString
 import com.google.android.gms.common.api.ResolvableApiException
@@ -35,7 +35,7 @@ import com.google.android.gms.location.Priority
 fun DetailScreen() {
     val context = LocalContext.current
 
-    // запрашиваем разрешения и стартуем сервис трекинга
+    // запрашиваем разрешения и включаем трекинг через WorkManager
     val locationSettingsClient = remember { LocationServices.getSettingsClient(context) }
 
     val sessionSnapshot by TrackingSessionState.state.collectAsState()
@@ -47,7 +47,7 @@ fun DetailScreen() {
         ActivityResultContracts.StartIntentSenderForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
-            TrackingService.start(context)
+            TrackingWorker.enqueueStart(context)
         }
     }
 
@@ -82,7 +82,7 @@ fun DetailScreen() {
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Button(onClick = { requestPermissionsAndStart() }, enabled = !isActive) { Text("Старт") }
-            Button(onClick = { TrackingService.stop(context) }, enabled = isActive) { Text("Стоп") }
+            Button(onClick = { TrackingWorker.enqueueStop(context) }, enabled = isActive) { Text("Стоп") }
         }
         if (isActive) {
             Text(
@@ -106,7 +106,7 @@ private fun ensureLocationEnabled(
         .setAlwaysShow(true)
         .build()
     settingsClient.checkLocationSettings(settingsRequest)
-        .addOnSuccessListener { TrackingService.start(context) }
+        .addOnSuccessListener { TrackingWorker.enqueueStart(context) }
         .addOnFailureListener { ex ->
             if (ex is ResolvableApiException) {
                 val intentSender = IntentSenderRequest.Builder(ex.resolution).build()

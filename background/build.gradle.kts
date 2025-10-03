@@ -39,4 +39,5 @@ dependencies {
     implementation(libs.koin.android)
 
     implementation(libs.play.services.location)
+    implementation(libs.androidx.work.runtime.ktx)
 }
